@@ -1,0 +1,34 @@
+---
+- include_tasks: "{{ ansible_network_os }}-facts.yml"
+
+- debug: msg="Device platform {{ device_platform }}, model {{ device_model }}, version {{ device_version }}, {{ device_storage_free }}/{{ device_storage_total }} bytes available"
+
+- name: Verify device model in network_version_map
+  assert:
+    that:
+      - "network_version_map[device_platform] is defined"
+      - "network_version_map[device_platform].version is defined"
+      - "network_version_map[device_platform].software is defined"
+    msg: "{{ device_platform }} is not in network_version_map"
+
+# - set_fact:
+#     device_regex: "{{ device_model | regex_escape() }}"
+#
+# - name:
+#   set_fact:
+#     match_list: "{{ network_software_requirements | selectattr('model', 'match', device_regex) | list }}"
+#
+# - debug: var=match_list
+
+- name: Setting the required version
+  set_fact:
+    device_required_version: "{{ network_version_map[device_platform].version }}"
+    device_required_software: "{{ network_version_map[device_platform].software }}"
+
+- block:
+  - debug:
+      msg: "Device {{ inventory_hostname }} requires installation of {{ device_required_version }} [current: {{ device_version }}]"
+
+  - set_fact:
+      device_requires_install: true
+  when: device_version != device_required_version

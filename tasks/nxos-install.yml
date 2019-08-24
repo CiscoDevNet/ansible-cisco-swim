@@ -1,0 +1,62 @@
+---
+- include_tasks: "{{ ansible_network_os }}-facts.yml"
+
+- name: Verify image version in network_image_map
+  assert:
+    that:
+      - "network_image_map[device_required_software] is defined"
+    msg: "{{ device_required_software }} is not in network_image_map"
+
+- name: Setting kickstart image filename
+  set_fact:
+    install_kickstart: "kickstart {{ network_image_map[device_required_software].kickstart_image_url.split('/')[-1] }}"
+    kickstart_image_file: "{{ network_image_map[device_required_software].kickstart_image_url.split('/')[-1] }}"
+  when: network_image_map[device_required_software].kickstart_image_url is defined
+
+- name: Setting system image filename
+  set_fact:
+    system_image_filename: "{{ network_image_map[device_required_software].system_image_url.split('/')[-1] }}"
+    install_disruptive: "{{ 'non-disruptive' if (not allow_disruptive|bool) else ''}}"
+
+- name: Run {{ install_disruptive }} installation
+  check_mode: no
+  nxos_install_os:
+    issu: no
+    system_image_file: "{{ system_image_filename }}"
+    kickstart_image_file: "{{ kickstart_image_file | default(omit) }}"
+  register: command_output
+  failed_when: false
+
+- debug: var=command_output
+
+# - name: Find textfsm template
+#   set_fact:
+#     install_template: "{{ item }}"
+#   with_first_found:
+#     - files:
+#         - "{{ ansible_network_os }}_show_install.textfsm"
+#       paths: "{{ template_path }}"
+#
+# - name: Parsing verification output
+#   set_fact:
+#     upgrade_data: "{{ command_output.install_state[0] | parse_cli_textfsm(install_template) }}"
+#
+# - debug: msg="Module(s) {{ upgrade_data | selectattr("UPGRADE_REQUIRED", "match", "^yes$") | map(attribute='MODULE') | list | unique | join(',') }} require(s) upgrade"
+
+- name: Reset SSH connection after reboot
+  meta: reset_connection
+
+- name: Wait for device to come back up
+  wait_for:
+    port: 22
+    timeout: 1800
+    host: "{{ ansible_host }}"
+    delay: 60
+  delegate_to: localhost
+
+- include_tasks: "{{ ansible_network_os }}-facts.yml"
+
+- assert:
+    that:
+      - device_version == device_required_version
+    msg: "Device is running {{ device_version }}, not {{ device_required_version }}"

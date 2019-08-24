@@ -1,4 +1,4 @@
-# network-software
+# cisco-swim
 
 An Ansible role to maintain the system software (check, stage, install, and clean) on various Cisco platforms
 
@@ -9,11 +9,19 @@ An Ansible role to maintain the system software (check, stage, install, and clea
 * Cisco IOS:
   * Catalyst 3750
   * Catalyst 3850
+  * Catalyst 9410R
   * ISR
 
 ## Requirements
 
-The inventory must be properly setup for the platforms being used from the [Ansible Network Modules](https://docs.ansible.com/ansible/latest/network/index.html).  Additionally, this role uses net_put to push binary images to IOS devices which requites Ansible 2.7.
+The inventory must be properly setup for the platforms being used from the [Ansible Network Modules](https://docs.ansible.com/ansible/latest/network/index.html).  Additionally, this role uses net_put to push binary images to IOS devices which requires Ansible 2.7+.
+
+## Cloning directly to into roles directory:
+
+```bash
+cd roles
+git clone https://github.com/CiscoDevNet/ansible-cisco-swim cisco-swim
+```
 
 ## Role Variables
 
@@ -73,7 +81,7 @@ If the role is called without the `tasks_from` attribute, it defaults to the fac
       gather_facts: no
       tasks:
         - include_role:
-            name: network-software
+            name: cisco-swim
 
 To run in a different mode, simply specify the mode in `tasks_from`:  
 
@@ -81,7 +89,7 @@ To run in a different mode, simply specify the mode in `tasks_from`:
       gather_facts: no
       tasks:
         - include_role:
-            name: network-software
+            name: cisco-swim
             tasks_from: stage
 
 In order to pass the task in on either the command line or via an AWX template:
@@ -90,24 +98,21 @@ In order to pass the task in on either the command line or via an AWX template:
       gather_facts: no
       tasks:
         - include_role:
-            name: network-software
+            name: cisco-swim
             tasks_from: "{{ network_software_task | default('facts') }}"
 
 Then invoke as:
 
-    ansible-playbook -e network_software_task=stage network-software.yml
+    ansible-playbook -e network_software_task=stage cisco-swim.yml
 
 Clean mode will show you what files it will delete. It won't look to delete the previous image.
 After you run clean mode you'll see the files it will delete. It won't delete the files.
 Use var really_delete=yes/no
 
-ad_hoc commmand
+```bash
 ansible-playbook your_playbook_name.yml -e really_delete_files=yes -k -vvv
+```
 
 ## License
 
-GPL-3
-
-## Author Information
-
-Steven Carter
+CISCO SAMPLE LICENSE

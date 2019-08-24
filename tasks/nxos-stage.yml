@@ -1,0 +1,145 @@
+---
+- name: Verify image version in network_image_map
+  assert:
+    that:
+      - "network_image_map[device_required_software] is defined"
+      - "network_image_map[device_required_software].system_image_url is defined"
+    msg: "{{ device_required_software }} is not in network_image_map"
+
+# When a kickstart file is required
+- block:
+  - name: Setting kickstart image filename
+    set_fact:
+      kickstart_image_filename: "{{ network_image_map[device_required_software].kickstart_image_url.split('/')[-1] }}"
+
+  - name: Looking for existing kickstart image
+    set_fact:
+      stage_kickstart_image: "{{ kickstart_image_filename not in device_file_list }}"
+      install_kickstart: "kickstart {{ kickstart_image_filename }}"
+
+  - block:
+    - name: Calculate MD5 sum for the kickstart image
+      nxos_command:
+        commands:
+          - show file {{ kickstart_image_filename }} md5sum
+      register: checksum_results
+
+    - set_fact:
+        stage_kickstart_image: "{{ checksum_results.stdout[0] != network_image_map[device_required_software].kickstart_image_checksum }}"
+
+    - name: Deleting image {{ kickstart_image_filename }} with bad checksum
+      nxos_command:
+        commands:
+          - "delete {{ kickstart_image_filename }} no-prompt"
+      when: stage_kickstart_image
+    when: kickstart_image_filename in device_file_list
+
+  - block:
+      - name: Check available free space for kickstart image
+        assert:
+          that:
+            - "device_storage_free|int >= network_image_map[device_required_software].kickstart_image_size|int"
+          msg: "Image requires {{ network_image_map[device_required_software].kickstart_image_size }} but only {{ device_storage_free }} is available"
+
+      - block:
+        - name: Ensure scp-server is enabled
+          nxos_feature:
+            feature: scp-server
+            state: enabled
+        - name: Staging local file {{ kickstart_image_filename }}
+          nxos_file_copy:
+            local_file: "/{{ network_image_map[device_required_software].kickstart_image_url.split('/')[3:] | join('/') }}"
+            remote_file: "{{ kickstart_image_filename }}"
+        when: network_image_map[device_required_software].kickstart_image_url is search("^file:///")
+
+      - name: Staging remote file {{ network_image_map[device_required_software].kickstart_image_url }}
+        nxos_command:
+          commands:
+            - "copy {{ network_image_map[device_required_software].kickstart_image_url }} bootflash: vrf management"
+        when: network_image_map[device_required_software].kickstart_image_url is not search("^file:///")
+    when: stage_kickstart_image
+  when: network_image_map[device_required_software].kickstart_image_url is defined
+
+- name: Setting system image filename
+  set_fact:
+    system_image_filename: "{{ network_image_map[device_required_software].system_image_url.split('/')[-1] }}"
+
+- name: Looking for existing system image
+  set_fact:
+    stage_system_image: "{{ system_image_filename not in device_file_list }}"
+
+- block:
+  - name: Calculate MD5 sum for the system image
+    nxos_command:
+      commands:
+        - show file {{ system_image_filename }} md5sum
+    register: checksum_results
+
+  - set_fact:
+      stage_system_image: "{{ checksum_results.stdout[0] != network_image_map[device_required_software].system_image_checksum }}"
+
+  - name: Deleting image {{ system_image_filename }} with bad checksum
+    nxos_command:
+      commands:
+        - "delete {{ system_image_filename }} no-prompt"
+    when: stage_system_image
+  when: system_image_filename in device_file_list
+
+- block:
+    - name: Check available free space for system image
+      assert:
+        that:
+          - "device_storage_free|int >= network_image_map[device_required_software].system_image_size|int"
+        msg: "Image requires {{ network_image_map[device_required_software].system_image_size }} but only {{ device_storage_free }} is available"
+
+    - block:
+      - name: Ensure scp-server is enabled
+        nxos_feature:
+          feature: scp-server
+          state: enabled
+
+      - name: Staging local file {{ system_image_filename }}
+        nxos_file_copy:
+          local_file: "/{{ network_image_map[device_required_software].system_image_url.split('/')[3:] | join('/') }}"
+          remote_file: "{{ system_image_filename }}"
+      when: network_image_map[device_required_software].system_image_url is search("^file:///")
+
+    - name: Staging remote file {{ network_image_map[device_required_software].system_image_url }}
+      nxos_command:
+        commands:
+          - "copy {{ network_image_map[device_required_software].system_image_url }} bootflash: vrf management"
+      when: network_image_map[device_required_software].system_image_url is not search("^file:///")
+  when: stage_system_image
+
+# - set_fact:
+#     install_command: "show install all impact {{ install_kickstart | default('') }} system {{ system_image_filename }} | begin Compatibility"
+#
+# - debug: var=install_command
+#z
+# - name: Run installation pre-checks
+#   nxos_command:
+#     commands:
+#       - "{{ install_command }}"
+#   register: command_output
+#   # failed_when: "'FAIL' in command_output.stdout[0]"
+#
+# - debug: var=command_output
+#
+# - debug: msg="*WARNING* This upgrade is disruptive"
+#   when: command_output.stdout[0] is search("disruptive")
+#
+# - name: Find textfsm template
+#   set_fact:
+#     install_template: "{{ template_item }}"
+#   with_first_found:
+#     - files:
+#         - "{{ ansible_network_os }}_show_install.textfsm"
+#       paths: "{{ template_path }}"
+#   loop_control:
+#     loop_var: template_item
+#
+# - name: Parsing verification output
+#   set_fact:
+#     upgrade_data: "{{ command_output.stdout[0] | parse_cli_textfsm(install_template) }}"
+#
+# - debug: msg="Module(s) {{ upgrade_data | selectattr("UPGRADE_REQUIRED", "match", "^yes$") | map(attribute='MODULE') | list | unique | join(',') }} require(s) install"

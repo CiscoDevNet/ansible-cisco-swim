@@ -1,0 +1,11 @@
+Value MODULE (\d+)
+Value IMAGE (\S+)
+Value RUNNING_VERSION (\S+)
+Value NEW_VERSION (\S+)
+Value UPGRADE_REQUIRED (\S+)
+
+Start
+  ^Images will be upgraded according to following table: -> IMAGES
+
+IMAGES
+  ^((\s+)*${MODULE})\s+${IMAGE}\s+${RUNNING_VERSION}\s+${NEW_VERSION}\s+${UPGRADE_REQUIRED} -> Record

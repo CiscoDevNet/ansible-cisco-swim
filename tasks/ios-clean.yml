@@ -1,0 +1,57 @@
+---
+- block:
+  - block:
+    - name: Running the software clean command
+      ios_command:
+        commands:
+          - command: 'request platform software package clean'
+            prompt: 'proceed with the deletion?'
+            answer: 'really_delete_files'
+      when: really_delete_files|bool
+      register: command_results
+    when: device_version is version('16', '>=')
+
+  - block:
+    - name: Running the software clean command
+      ios_command:
+        commands:
+          - command: 'software clean force'
+      when: really_delete_files|bool
+      register: command_results
+    when: device_version is version('16', '<')
+
+  when: stack_install_mode == 'INSTALL'
+
+- block:
+  - name: Verify image version in network_image_map
+    assert:
+      that:
+        - "network_image_map[device_required_software] is defined"
+        - "network_image_map[device_required_software] is defined"
+      msg: "{{ device_required_software }} is not in network_image_map"
+
+  # Always ignore the image that we are wanting to intall
+  - set_fact:
+      ignore_image_list: "{{ [ network_image_map[device_required_software].system_image_url.split('/')[-1],device_system_image ] }}"
+
+  - set_fact:
+      device_image_list: "{{ dir_data | selectattr('NAME', 'search', '\\.bin$') | map(attribute='NAME') | list }}"
+
+  - name: Create the list of images to delete
+    set_fact:
+      delete_image_list: "{{ device_image_list | difference(ignore_image_list) }}"
+
+  - debug: msg="Deleting image(s) {{ delete_image_list | join(',') }}"
+    when: delete_image_list
+
+  - name: Deleting unused images
+    ios_command:
+      commands:
+        - command: "delete {{ image_item }}"
+          prompt: 'Delete'
+          answer: "\r\r"
+    with_items: "{{ delete_image_list }}"
+    when: really_delete_files|bool
+    loop_control:
+      loop_var: image_item
+  when: stack_install_mode == 'BUNDLE'

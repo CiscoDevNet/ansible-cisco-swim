@@ -1,0 +1,8 @@
+Value FILE ([^,]+)
+Value PACKAGE ([^,]+)
+Value VERSION ([^,]+)
+Value STATUS (\S+)
+
+Start
+  ^Package:\s+${PACKAGE},\s+version:\s+${VERSION},\s+status:\s+${STATUS}
+  ^\s+File:\s+${FILE}, -> Record

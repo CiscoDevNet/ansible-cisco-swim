@@ -1,0 +1,33 @@
+---
+- name: Verify image version in network_image_map
+  assert:
+    that:
+      - "network_image_map[device_required_software] is defined"
+    msg: "{{ device_required_software }} is not in network_image_map"
+
+- name: Create the list of images to ignore (active + staged)
+  set_fact:
+    ignore_image_list: "{{ ignore_image_list|default([]) + [ image_item ] }}"
+  with_items:
+    - "{{ device_system_image }}"
+    - "{{ device_kickstart_image }}"
+    - "{{ network_image_map[device_required_software].kickstart_image_url.split('/')[-1] if (network_image_map[device_required_software].kickstart_image_url is defined) else '' }}"
+    - "{{ network_image_map[device_required_software].system_image_url.split('/')[-1] if (network_image_map[device_required_software].system_image_url is defined) else '' }}"
+  loop_control:
+    loop_var: image_item
+
+- name: Create the list of images to delete
+  set_fact:
+    delete_image_list: "{{ device_image_list | difference(ignore_image_list) }}"
+
+- debug: msg="Deleting image(s) {{ delete_image_list | join(',') }}"
+  when: delete_image_list
+
+- name: Deleting unused images
+  nxos_command:
+    commands:
+      - "delete {{ image_item }} no-prompt"
+  with_items: "{{ delete_image_list }}"
+  when: delete_image_list and (really_delete_files|bool)
+  loop_control:
+    loop_var: image_item

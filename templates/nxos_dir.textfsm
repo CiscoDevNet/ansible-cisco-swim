@@ -1,0 +1,18 @@
+Value Fillup FILE_SYSTEM (\S+)
+Value SIZE (\d+)
+Value Fillup TOTAL_SIZE (\d+)
+Value Fillup TOTAL_FREE (\d+)
+Value DATE_TIME ((<no date>)|(\w+\s\d+\s\S+\s\S+))
+Value NAME (\S+)
+
+Start
+  ^Usage for\s+${FILE_SYSTEM} -> SUMMARY
+  ^((\s+)*${SIZE})\s+${DATE_TIME}\s+${NAME} -> Record
+
+SUMMARY
+  ^Usage for\s+${FILE_SYSTEM}
+  ^\s*${TOTAL_FREE} bytes free
+  ^\s*${TOTAL_SIZE} bytes total
+
+#
+EOF

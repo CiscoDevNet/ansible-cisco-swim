@@ -1,0 +1,30 @@
+---
+- name: Get switch information
+  nxos_command:
+    commands:
+      - show version
+      - dir
+      - show inventory
+  register: command_output
+
+- name: Find the version specific templates
+  set_fact:
+    version_template: "{{ role_path }}/templates/{{ ansible_network_os }}_show_version.textfsm"
+    dir_template: "{{ role_path }}/templates/{{ ansible_network_os }}_dir.textfsm"
+    inventory_template: "{{ role_path }}/templates/{{ ansible_network_os }}_show_inventory.textfsm"
+
+- set_fact:
+    version_data: "{{ command_output.stdout[0] | parse_cli_textfsm(version_template) }}"
+    dir_data: "{{ command_output.stdout[1] | parse_cli_textfsm(dir_template) }}"
+    hardware_data: "{{ command_output.stdout[2] | parse_cli_textfsm(inventory_template) }}"
+
+- set_fact:
+    device_model: "{{ hardware_data[0].PID }}"
+    device_platform: "{{ (hardware_data[0].PID | regex_search('^([^-]+-C[^-]+)', '\\1'))[0] }}"
+    device_version: "{{ version_data[0].OS }}"
+    device_storage_free: "{{ dir_data[0].TOTAL_FREE|int }}"
+    device_storage_total: "{{ dir_data[0].TOTAL_SIZE }}"
+    device_file_list: "{{ dir_data | map(attribute='NAME') | list }}"
+    device_image_list: "{{ dir_data | selectattr('NAME', 'search', '\\.bin$') | map(attribute='NAME') | list }}"
+    device_system_image: "{{ version_data[0].SYSTEM_IMAGE.split('/')[-1] }}"
+    device_kickstart_image: "{{ version_data[0].KICKSTART_IMAGE.split('/')[-1] }}"

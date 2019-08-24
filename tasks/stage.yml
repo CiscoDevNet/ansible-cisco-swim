@@ -1,0 +1,9 @@
+---
+- include_tasks: facts.yml
+
+- include_tasks: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_network_os }}-{{ device_model }}-stage.yml"
+        - "{{ ansible_network_os }}-stage.yml"
+  when: device_version != device_required_version

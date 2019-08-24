@@ -1,0 +1,24 @@
+---
+
+dependencies: []
+
+galaxy_info:
+  role_name: 'cisco_switch_software'
+  author: 'NFIT'
+  description: 'Manage software version of Cisco switches'
+  company: 'Hoffmann-La Roche'
+  license: 'proprietary'
+  min_ansible_version: '2.7.0'
+  platforms:
+    - name: IOS
+      versions:
+        - any
+    - name: NXOS
+      versions:
+        - any
+  galaxy_tags:
+    - network
+    - switch
+    - cisco
+    - nxos
+    - ios

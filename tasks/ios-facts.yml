@@ -1,0 +1,65 @@
+---
+- name: Get switch information
+  ios_command:
+    commands:
+      - show version
+      - dir
+  register: command_output
+
+- name: Find the version specific templates
+  set_fact:
+    version_template: "{{ role_path }}/templates/{{ ansible_network_os }}_show_version.textfsm"
+    dir_template: "{{ role_path }}/templates/{{ ansible_network_os }}_dir.textfsm"
+
+- name: Parse the command output
+  set_fact:
+    version_data: "{{ command_output.stdout[0] | parse_cli_textfsm(version_template) }}"
+    dir_data: "{{ command_output.stdout[1] | parse_cli_textfsm(dir_template) }}"
+
+- set_fact:
+    device_model: "{{ version_data[0].HARDWARE[0] }}"
+    device_platform: "{{ (version_data[0].HARDWARE[0]|regex_search('^(([^-]+-)?C[^-]+)', '\\1'))[0] }}"
+    device_version: "{{ version_data[0].VERSION }}"
+    device_storage_free: "{{ dir_data[0].TOTAL_FREE|int }}"
+    device_storage_total: "{{ dir_data[0].TOTAL_SIZE }}"
+    device_file_list: "{{ dir_data | map(attribute='NAME') | list }}"
+    device_system_image: "{{ version_data[0].RUNNING_IMAGE }}"
+
+- block:
+    - name: Find stack template
+      set_fact:
+        stack_template: "{{ item }}"
+      with_first_found:
+        - files:
+            - "{{ ansible_network_os }}_{{ device_platform }}_show_version_stack.textfsm"
+            - "{{ ansible_network_os }}_show_version_stack.textfsm"
+#          skip: true
+          paths: "{{ template_path }}"
+
+    - name: Parse stack data
+      set_fact:
+        stack_data: "{{ command_output.stdout[0] | parse_cli_textfsm(stack_template) }}"
+        stack_install_mode_list: []
+
+    - name: Check stack install modes
+      set_fact:
+        stack_install_mode_list: "{{ stack_data | selectattr('MODE', 'defined') | map(attribute='MODE') | unique | list }}"
+
+    - assert:
+        that:
+          - stack_install_mode_list | length < 2
+        msg: "All members of the stack must have the same install mode"
+
+    - name: Set stack install mode
+      set_fact:
+        stack_install_mode: "{{ stack_install_mode_list[0] | default('BUNDLE') }}"
+
+  when: device_platform is search('^WS-')
+
+  block:
+    - name: Set stack install mode
+      set_fact:
+        stack_install_mode: 'INSTALL' 
+  when: device_platform is search('^C9')
+
+- debug: msg="Device install mode is {{ stack_install_mode }}"

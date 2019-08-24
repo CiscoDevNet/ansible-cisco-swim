@@ -1,0 +1,9 @@
+---
+- include_tasks: facts.yml
+
+- include_tasks: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_network_os }}-{{ device_model }}-clean.yml"
+        - "{{ ansible_network_os }}-{{ device_platform }}-clean.yml"
+        - "{{ ansible_network_os }}-clean.yml"

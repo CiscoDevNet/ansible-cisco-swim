@@ -1,0 +1,65 @@
+---
+- name: Verify image version in network_image_map
+  assert:
+    that:
+      - "network_image_map[device_required_software] is defined"
+      - "network_image_map[device_required_software].system_image_url is defined"
+    msg: "{{ device_required_software }} is not in network_image_map"
+
+- name: Setting system image filename
+  set_fact:
+    system_image_filename: "{{ network_image_map[device_required_software].system_image_url.split('/')[-1] }}"
+
+- name: Looking for existing system image
+  set_fact:
+    stage_system_image: "{{ system_image_filename not in device_file_list }}"
+
+- block:
+  - name: Calculate MD5 sum for the system image
+    ios_command:
+      commands:
+        - verify /md5 {{ system_image_filename }}
+    register: checksum_results
+
+  - set_fact:
+      device_image_checksum: "{{ (checksum_results.stdout[0]|regex_search(' ([A-z0-9]+)$','\\1'))[0] }}"
+
+  - set_fact:
+      stage_system_image: "{{ device_image_checksum != network_image_map[device_required_software].system_image_checksum }}"
+
+  - name: Deleting image {{ system_image_filename }} with bad checksum
+    ios_command:
+      commands:
+        - command: "delete {{ system_image_filename }}"
+          prompt: 'Delete'
+          answer: "\r\r"
+    when: stage_system_image
+  when: system_image_filename in device_file_list
+
+- block:
+    - name: Check available free space for system image
+      assert:
+        that:
+          - "device_storage_free|int >= network_image_map[device_required_software].system_image_size|int"
+        msg: "Image requires {{ network_image_map[device_required_software].system_image_size }} but only {{ device_storage_free }} is available"
+
+    - block:
+      - name: Enable SCP
+        ios_config:
+          lines:
+            - ip scp server enable
+
+      - name: Staging local file {{ system_image_filename }}
+        net_put:
+          src: "/{{ network_image_map[device_required_software].system_image_url.split('/')[3:] | join('/') }}"
+          dest: "flash:/{{ system_image_filename }}"
+      when: network_image_map[device_required_software].system_image_url is search("^file:///")
+
+    - name: Staging remote file {{ system_image_filename }}
+      ios_command:
+        commands:
+          - command: "copy /verify {{ network_image_map[device_required_software].system_image_url }} flash:/{{ system_image_filename }}"
+            prompt: Destination filename
+            answer: "{{ system_image_filename }}"
+      when: network_image_map[device_required_software].system_image_url is not search("^file:///")
+  when: stage_system_image

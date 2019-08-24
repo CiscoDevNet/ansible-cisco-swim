@@ -1,0 +1,14 @@
+Value MASTER (\*)
+Value NUMBER (\d+)
+Value PORTS (\d+)
+Value MODEL (\S+)
+Value VERSION (\S+)
+Value RUNNING_IMAGE (\S+)
+Value MODE (\S+)
+
+
+Start
+  ^Switch Ports Model -> Stack
+
+Stack
+  ^(${MASTER})?\s+${NUMBER}\s+${PORTS}\s+${MODEL}\s+${VERSION}\s+${RUNNING_IMAGE}\s+${MODE}
