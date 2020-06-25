@@ -1,0 +1,9 @@
+---
+- name: Running the software clean command
+  ios_command:
+    commands:
+      - command: 'request platform software package clean switch all file flash:'
+        prompt: '\[y/n\]'
+        answer: 'y'
+  when: really_delete_files|bool
+  register: command_results
