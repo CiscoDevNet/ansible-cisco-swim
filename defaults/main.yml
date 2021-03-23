@@ -4,5 +4,40 @@ template_path:
   - "{{ role_path }}/templates"
   - "{{ role_path }}/files"
 stack_install_mode: BUNDLE
-really_delete_files: no
+really_delete_files: yes
 device_requires_install: no
+
+network_version_map:
+  WS-C3850:
+    version: '16.9.5'
+    software: 'cat3k_16.09.05'
+  C9300:
+    version: '16.12.5'
+    software: 'cat9k_16.12.05'
+
+network_image_map:
+  'cat3k_16.09.05':
+    system_image_url: http://192.133.177.10/sw/cat3k/cat3k_caa-universalk9.16.09.05.SPA.bin
+    system_image_size: 450283034
+    system_image_checksum: 559bda2a74c0a2a52b3aebd7341ff96b
+  'cat3k_16.12.03a':
+    system_image_url: http://192.133.177.10/sw/cat3k/cat3k_caa-universalk9.16.12.03a.SPA.bin
+    system_image_size: 479561268
+    system_image_checksum: 4a742c3969e883db51702522267e4b86
+
+  'cat9k_16.09.05':
+    system_image_url: file:///Users/stevenca/Workspaces/upgrade9k/sw/cat9k/cat9k_iosxe.16.09.05.SPA.bin
+    system_image_size: 711506601
+    system_image_checksum: b8940c4e0b023d8846b03187b48f396d
+  'cat9k_16.11.01':
+    system_image_url: http://192.133.177.10/sw/cat9k/cat9k_iosxe.16.11.01.SPA.bin
+    system_image_size: 721655658
+    system_image_checksum: 37aaadfe3a442e1de8ebd4ad631baebe
+  'cat9k_16.12.04':
+    system_image_url: http://colab-s3.s3.amazonaws.com/sw/cat9k/cat9k_iosxe.16.12.04.SPA.bin
+    system_image_size: 805827585
+    system_image_checksum: 16e8583ca6184c54f9d9fccf4574fa6e
+  'cat9k_16.12.05':
+    system_image_url: http://colab-s3.s3.amazonaws.com/sw/cat9k/cat9k_iosxe.16.12.05.SPA.bin
+    system_image_size: 806048122
+    system_image_checksum: 8e01c32ae85ead783ac6ce8d199094e5

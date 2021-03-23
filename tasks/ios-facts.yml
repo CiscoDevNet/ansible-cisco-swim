@@ -56,7 +56,7 @@
 
   when: device_platform is search('^WS-')
 
-  block:
+- block:
     - name: Set stack install mode
       set_fact:
         stack_install_mode: 'INSTALL' 

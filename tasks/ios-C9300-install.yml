@@ -36,7 +36,6 @@
     timeout: 1800
     host: "{{ ansible_host }}"
     delay: 300
-    retries: 5
   delegate_to: localhost
 
 - name: Get switch information
