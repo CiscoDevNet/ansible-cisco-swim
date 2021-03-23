@@ -10,6 +10,7 @@ An Ansible role to maintain the system software (check, stage, install, and clea
   * Catalyst 3750
   * Catalyst 3850
   * Catalyst 9410R
+  * Catalyst 9300
   * ISR
 
 ## Requirements
