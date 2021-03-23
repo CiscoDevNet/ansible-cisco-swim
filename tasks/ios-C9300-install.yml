@@ -1,0 +1,56 @@
+---
+- name: Verify image version in network_image_map
+  assert:
+    that:
+      - "network_image_map[device_required_software] is defined"
+      - "network_image_map[device_required_software].system_image_url is defined"
+    msg: "{{ device_required_software }} is not in network_image_map"
+
+- name: Setting system image filename
+  set_fact:
+    system_image_filename: "{{ network_image_map[device_required_software].system_image_url.split('/')[-1] }}"
+
+- name: Save the configuration
+  ios_config:
+    save_when: always
+
+- name: Add image {{ system_image_filename }}
+  ios_command:
+    commands:
+      - command: "install add file flash:{{ system_image_filename }} activate commit"
+        prompt: proceed
+        answer: y
+  register: upgrade_results
+
+- debug: var=upgrade_results
+
+#- debug: var=upgrade_results.stdout
+#    when: "'FAILED' in upgrade_results.stdout"
+
+- name: Reset the persitent SSH connection
+  meta: reset_connection
+
+- name: Wait for device to come back up
+  wait_for:
+    port: 22
+    timeout: 1800
+    host: "{{ ansible_host }}"
+    delay: 300
+  delegate_to: localhost
+
+- name: Get switch information
+  ios_command:
+    commands:
+      - show version
+  register: command_output
+  retries: 6
+  delay: 10
+
+- name: Parse the command output
+  set_fact:
+    version_data: "{{ command_output.stdout[0] | parse_cli_textfsm(version_template) }}"
+
+- assert:
+    that:
+      - version_data[0].VERSION == device_required_version
+    msg: "Device is running {{ version_data[0].VERSION }}, not {{ device_required_version }}"

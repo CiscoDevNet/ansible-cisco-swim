@@ -1,2 +1,6 @@
 ---
 # vars file for network-software
+really_delete_files: yes
+
+#leading zeros should be removed from software versions (e.g. 16.09.05 -> 16.9.5)
+
